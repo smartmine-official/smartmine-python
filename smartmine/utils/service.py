@@ -10,6 +10,8 @@ def get_default_option_name(service_name: ServiceName) -> str:
         return "remove-scratches"
     elif service_name == ServiceName.image_denoising:
         return "denoising-strength"
+    elif service_name == ServiceName.image_enhancement:
+        return "enhance-faces"
     else:
         raise ValueError(f"Unsupported service: {service_name}")
 
@@ -23,5 +25,7 @@ def get_default_option_value(service_name: ServiceName) -> str:
         return "disabled"
     elif service_name == ServiceName.image_denoising:
         return "high"
+    elif service_name == ServiceName.image_enhancement:
+        return "enabled"
     else:
         raise ValueError(f"Unsupported service: {service_name}")
