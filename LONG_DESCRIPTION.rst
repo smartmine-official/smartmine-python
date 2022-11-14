@@ -58,3 +58,16 @@ Advanced Usage:
         load_dir="examples/images/",
         save_dir=str(Path.home() / "Downloads"),
     )
+
+
+Running Tests
+-------------
+
+First, make sure you have your Smartmine username and password ready, then set these as environment variables, i.e.:
+
+    export SMARTMINE_USERNAME=<username>
+    export SMARTMINE_PASSWORD=<password>
+
+Then, use `pytest` to run unit tests:
+
+    pytest -vv smartmine/

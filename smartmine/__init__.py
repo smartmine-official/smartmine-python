@@ -1,33 +1,41 @@
+import logging
 import os
 import re
 import tempfile
+import time
 from pathlib import Path
-from typing import Optional
-
 from tqdm import tqdm
+from typing import Optional, Union
 
+from smartmine.utils.exception import ProcessingError
+from smartmine.utils.health import check_api_health
 from smartmine.utils.image import get_image_dimensions, resize_image_and_save
-from smartmine.utils.model import ServiceName
+from smartmine.utils.model import ServiceName, ServiceStatus
 from smartmine.utils.request import (
     login,
     get_request_token,
     upload_file,
     process_request,
-    download_result,
+    get_progress,
+    download,
     check_image_dimensions,
 )
 from smartmine.utils.credentials import check_credentials
 
-username = None
-password = None
-bearer_token = None
-api_base = "https://api.smartmine.net/api/v1"
+username = ""
+password = ""
+bearer_token = ""
 
 
 def process_image(
-    service_name: ServiceName, load_path: str, save_path: Optional[str] = None
+    service_name: ServiceName,
+    load_path: str,
+    save_path: Optional[str] = None,
+    enable_downsample: bool = True,
 ):
     global bearer_token
+
+    check_api_health()
 
     # Default to the user's Downloads folder if the save directory is not set
     if not save_path:
@@ -36,14 +44,22 @@ def process_image(
     check_credentials(username=username, password=password)
     bearer_token = login(username=username, password=password)
     _process_single_image(
-        service_name=service_name, load_path=load_path, save_path=save_path
+        service_name=service_name,
+        load_path=load_path,
+        save_path=save_path,
+        enable_downsample=enable_downsample,
     )
 
 
 def bulk_process_images(
-    service_name: ServiceName, load_dir: str, save_dir: Optional[str] = None
+    service_name: ServiceName,
+    load_dir: str,
+    save_dir: Optional[str] = None,
+    enable_downsample: bool = True,
 ):
     global bearer_token
+
+    check_api_health()
 
     # Default to the user's Downloads folder if the save directory is not set
     if not save_dir:
@@ -65,20 +81,33 @@ def bulk_process_images(
         # Use the same filename as the input file when saving the result
         save_path = Path(save_dir) / Path(load_path).name
         _process_single_image(
-            service_name=service_name, load_path=load_path, save_path=save_path
+            service_name=service_name,
+            load_path=load_path,
+            save_path=save_path,
+            enable_downsample=enable_downsample,
         )
 
 
 def _process_single_image(
     service_name: ServiceName,
     load_path: str,
-    save_path: str,
+    save_path: Union[str, Path],
+    enable_downsample: bool = True,
     upscale_result_to_match_source: bool = True,
 ):
+    if not enable_downsample:
+        logging.warning(
+            "Setting enable_downsample=False may cause the Smartmine API to reject uploaded media if it is too large"
+        )
+
     original_image_dimensions = get_image_dimensions(load_path)
-    downsampled_load_path = _downsample_image_if_required(
-        service_name=service_name, load_path=load_path
-    )
+
+    if enable_downsample:
+        new_load_path = _downsample_image_if_required(
+            service_name=service_name, load_path=load_path
+        )
+    else:
+        new_load_path = load_path
 
     # If resizing back to the original file dimensions is enabled:
     #  (1) Process the down-sampled image
@@ -87,7 +116,7 @@ def _process_single_image(
     #  (3) Upscale the processed image with the Upscaling service
     #  (4) Resize back to the original image size
     if (
-        downsampled_load_path is not None
+        new_load_path is not None
         and upscale_result_to_match_source
         and service_name != ServiceName.image_super_resolution
     ):
@@ -97,7 +126,7 @@ def _process_single_image(
             # Step (1)
             _upload_to_smartmine_and_download_result(
                 service_name=service_name,
-                load_path=downsampled_load_path,
+                load_path=new_load_path,
                 save_path=service_result.name,
             )
             with tempfile.NamedTemporaryFile(
@@ -110,7 +139,7 @@ def _process_single_image(
                 )
                 # Step (3)
                 _upload_to_smartmine_and_download_result(
-                    service_name=ServiceName.image_super_resolution,
+                    service_name=service_name,
                     load_path=service_result_downsampled_load_path
                     if service_result_downsampled_load_path is not None
                     else service_result.name,
@@ -127,32 +156,50 @@ def _process_single_image(
     else:
         _upload_to_smartmine_and_download_result(
             service_name=service_name,
-            load_path=downsampled_load_path
-            if downsampled_load_path is not None
-            else load_path,
+            load_path=new_load_path if new_load_path is not None else load_path,
             save_path=save_path,
         )
 
 
 def _upload_to_smartmine_and_download_result(
-    service_name: ServiceName, load_path: str, save_path: str
+    service_name: ServiceName, load_path: str, save_path: str, timeout: int = 60
 ) -> None:
-    request_token = get_request_token(
-        service_name=service_name, bearer_token=bearer_token
-    )
+    # TODO support custom Service Options
+    # Get the request token
+    request_token = get_request_token(service_name=service_name, bearer_token=bearer_token)
+
+    # Upload the file
     upload_file(
-        service_name=service_name,
         file_path=load_path,
         bearer_token=bearer_token,
         request_token=request_token,
     )
+
+    # Start request processing
     process_request(
-        service_name=service_name,
         bearer_token=bearer_token,
         request_token=request_token,
     )
-    download_result(
-        service_name=service_name,
+
+    # Wait for the request processing to complete
+    complete = False
+    attempts = 0
+    while not complete:
+        progress = get_progress(bearer_token=bearer_token, request_token=request_token)
+        # Check if the processing has failed
+        if progress["status"] == ServiceStatus.failed.value:
+            raise ProcessingError(f"Request with request-token: {request_token} failed")
+        elif progress["status"] == ServiceStatus.complete:
+            break
+        time.sleep(1)
+        attempts += 1
+        # Timeout after an hour
+        # TODO this may need to be revised when adding long-running services such as video services.
+        if attempts >= timeout:
+            break
+
+    # Download the result
+    download(
         save_path=save_path,
         bearer_token=bearer_token,
         request_token=request_token,
