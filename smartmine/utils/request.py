@@ -12,7 +12,7 @@ from smartmine.utils.exception import (
     UploadError,
     ProcessingError,
     DownloadError,
-    ProgressError,
+    ProgressError, ImageDimensionsCheckError,
 )
 
 API_V1_BASE_URL = "https://api.smartmine.net/api/v1"
@@ -49,7 +49,7 @@ def check_image_dimensions(
     )
     response_content = response.json()
     if response.status_code != 200:
-        raise LoginError(response.text)
+        raise ImageDimensionsCheckError(response.text)
     if response_content["message"] == "Image requires resize":
         return [response_content["width"], response_content["height"]]
 
