@@ -20,10 +20,10 @@ def test_login() -> None:
 
 
 def test_process_image() -> None:
-    original_image_path = f"{TEST_DIR}/testdata/smartmine_logo_large.png"
+    original_image_path = f"{TEST_DIR}/testdata/CP2077.jpg"
     original_image = Image.open(original_image_path)
 
-    with tempfile.NamedTemporaryFile(suffix=".png") as f:
+    with tempfile.NamedTemporaryFile(suffix=".jpg") as f:
         smartmine.process_image(
             service_name=smartmine.ServiceName.image_enhancement,
             load_path=original_image_path,
@@ -41,9 +41,10 @@ def test_bulk_process_images() -> None:
 
     with tempfile.TemporaryDirectory() as temp_directory:
         smartmine.bulk_process_images(
-            service_name=smartmine.ServiceName.image_restoration,
+            service_name=smartmine.ServiceName.image_enhancement,
             load_dir=load_path,
             save_dir=temp_directory,
+            enable_downsample=False
         )
 
         # Check the images were saved successfully

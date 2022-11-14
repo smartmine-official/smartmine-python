@@ -70,4 +70,4 @@ First, make sure you have your Smartmine username and password ready, then set t
 
 Then, use `pytest` to run unit tests:
 
-    pytest -vv smartmine/
+    pytest -vv --exitfirst smartmine/

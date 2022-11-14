@@ -13,7 +13,7 @@ with open(os.path.join(here, "LONG_DESCRIPTION.rst"), "r", encoding="utf-8") as 
 setup(
     name="smartmine",
     description="Python bindings for the Smartmine API",
-    version="0.2.2",
+    version="1.0.1",
     long_description=long_description,
     long_description_content_type="text/x-rst",
     author="Smartmine",
