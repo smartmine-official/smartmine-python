@@ -8,6 +8,10 @@ class LoginError(Exception):
     pass
 
 
+class ImageDimensionsCheckError(Exception):
+    pass
+
+
 class RequestTokenError(Exception):
     pass
 

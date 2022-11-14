@@ -31,7 +31,6 @@ def process_image(
     service_name: ServiceName,
     load_path: str,
     save_path: Optional[str] = None,
-    enable_downsample: bool = True,
 ):
     global bearer_token
 
@@ -47,7 +46,6 @@ def process_image(
         service_name=service_name,
         load_path=load_path,
         save_path=save_path,
-        enable_downsample=enable_downsample,
     )
 
 
@@ -55,7 +53,6 @@ def bulk_process_images(
     service_name: ServiceName,
     load_dir: str,
     save_dir: Optional[str] = None,
-    enable_downsample: bool = True,
 ):
     global bearer_token
 
@@ -84,7 +81,6 @@ def bulk_process_images(
             service_name=service_name,
             load_path=load_path,
             save_path=save_path,
-            enable_downsample=enable_downsample,
         )
 
 
@@ -92,22 +88,25 @@ def _process_single_image(
     service_name: ServiceName,
     load_path: str,
     save_path: Union[str, Path],
-    enable_downsample: bool = True,
+):
+    _upload_to_smartmine_and_download_result(
+        service_name=service_name,
+        load_path=load_path,
+        save_path=save_path,
+    )
+
+
+def _process_single_image_with_downsample(
+    service_name: ServiceName,
+    load_path: str,
+    save_path: Union[str, Path],
     upscale_result_to_match_source: bool = True,
 ):
-    if not enable_downsample:
-        logging.warning(
-            "Setting enable_downsample=False may cause the Smartmine API to reject uploaded media if it is too large"
-        )
-
     original_image_dimensions = get_image_dimensions(load_path)
 
-    if enable_downsample:
-        new_load_path = _downsample_image_if_required(
-            service_name=service_name, load_path=load_path
-        )
-    else:
-        new_load_path = load_path
+    new_load_path = _downsample_image_if_required(
+        service_name=service_name, load_path=load_path
+    )
 
     # If resizing back to the original file dimensions is enabled:
     #  (1) Process the down-sampled image
@@ -196,7 +195,7 @@ def _upload_to_smartmine_and_download_result(
         # Timeout after an hour
         # TODO this may need to be revised when adding long-running services such as video services.
         if attempts >= timeout:
-            break
+            raise ProcessingError(f"Request with request-token: {request_token} timed out")
 
     # Download the result
     download(
