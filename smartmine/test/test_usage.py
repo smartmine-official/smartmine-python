@@ -47,7 +47,7 @@ def test_bulk_process_images() -> None:
 
         # Check the images were saved successfully
         image_files = os.listdir(temp_directory)
-        assert len(image_files) == 2
+        assert len(image_files) == 3
         for image_file in image_files:
             processed_image = Image.open(f"{temp_directory}/{image_file}")
             assert processed_image.size[0] > 0
