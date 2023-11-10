@@ -16,7 +16,20 @@ You can install this package by using the pip tool and installing:
 Setting up a Smartmine Account
 ------------------------------
 
-Sign up for Smartmine at https://ap.smartmine.net/pricing.
+Register for a free Smartmine account at https://ai.smartmine.net/service/computer-vision/image-enhancement
+
+Try Services
+------------
+
+The following services are available at Smartmine for you to try via the frontend before integrating with the API:
+
+- `Automated subtitling and translation <https://ai.smartmine.net/service/speech-recognition/captioning>`_
+- `Image Enhancement <https://ai.smartmine.net/service/computer-vision/image-enhancement>`_
+- `Image Upscaling <https://ai.smartmine.net/service/computer-vision/image-super-resolution>`_
+- `Image Sharpening <https://ai.smartmine.net/service/computer-vision/image-deblurring>`_
+- `Image De-noising <https://ai.smartmine.net/service/computer-vision/image-denoising>`_
+- `Image Restoration <https://ai.smartmine.net/service/computer-vision/image-restoration>`_
+
 
 Using the Smartmine API
 -----------------------
